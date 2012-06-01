@@ -1,59 +1,24 @@
+autoload -U colors && colors
 
-function my_git_prompt() {
-  tester=$(git rev-parse --git-dir 2> /dev/null) || return
-  
-  INDEX=$(git status --porcelain 2> /dev/null)
-  STATUS=""
+autoload -Uz vcs_info
 
-  # is branch ahead?
-  if $(echo "$(git log origin/$(current_branch)..HEAD 2> /dev/null)" | grep '^commit' &> /dev/null); then
-    STATUS="$STATUS$ZSH_THEME_GIT_PROMPT_AHEAD"
-  fi
+zstyle ':vcs_info:*' stagedstr '%F{green}●'
+zstyle ':vcs_info:*' unstagedstr '%F{yellow}●'
+zstyle ':vcs_info:*' check-for-changes true
+zstyle ':vcs_info:(sv[nk]|bzr):*' branchformat '%b%F{1}:%F{11}%r'
+zstyle ':vcs_info:*' enable git svn
+theme_precmd () {
+    if [[ -z $(git ls-files --other --exclude-standard 2> /dev/null) ]] {
+        zstyle ':vcs_info:*' formats ' [%b%c%u%B%F{white}]'
+    } else {
+        zstyle ':vcs_info:*' formats ' [%b%c%u%B%F{red}●%F{white}]'
+    }
 
-  # is anything staged?
-  if $(echo "$INDEX" | grep -E -e '^(D[ M]|[MARC][ MD]) ' &> /dev/null); then
-    STATUS="$STATUS$ZSH_THEME_GIT_PROMPT_STAGED"
-  fi
-
-  # is anything unstaged?
-  if $(echo "$INDEX" | grep -E -e '^[ MARC][MD] ' &> /dev/null); then
-    STATUS="$STATUS$ZSH_THEME_GIT_PROMPT_UNSTAGED"
-  fi
-
-  # is anything untracked?
-  if $(echo "$INDEX" | grep '^?? ' &> /dev/null); then
-    STATUS="$STATUS$ZSH_THEME_GIT_PROMPT_UNTRACKED"
-  fi
-
-  # is anything unmerged?
-  if $(echo "$INDEX" | grep -E -e '^(A[AU]|D[DU]|U[ADU]) ' &> /dev/null); then
-    STATUS="$STATUS$ZSH_THEME_GIT_PROMPT_UNMERGED"
-  fi
-
-  if [[ -n $STATUS ]]; then
-    STATUS=" $STATUS"
-  fi
-
-  echo "$ZSH_THEME_GIT_PROMPT_PREFIX$(my_current_branch)$STATUS$ZSH_THEME_GIT_PROMPT_SUFFIX"
+    vcs_info
 }
 
-function my_current_branch() {
-  echo $(current_branch || echo "(no branch)")
-}
+setopt prompt_subst
+PROMPT='%(!.%{$fg_bold[red]%}.%{$fg_bold[green]%})%m %{$fg_bold[blue]%}%(!.%1~.%~)%B%F{white}${vcs_info_msg_0_}%B%F{green} %{$reset_color%}'
 
-function ssh_connection() {
-  if [[ -n $SSH_CONNECTION ]]; then
-    echo "%{$fg_bold[red]%}(ssh) "
-  fi
-}
-
-
-PROMPT='%(!.%{$fg_bold[red]%}.%{$fg_bold[green]%})%m %{$fg_bold[blue]%}%(!.%1~.%~) $(my_git_prompt)%{$reset_color%}'
-
-ZSH_THEME_GIT_PROMPT_PREFIX=" $fg[white]‹ %{$fg_bold[yellow]%}"
-ZSH_THEME_GIT_PROMPT_AHEAD="%{$fg_bold[magenta]%}↑"
-ZSH_THEME_GIT_PROMPT_STAGED="%{$fg_bold[green]%}●"
-ZSH_THEME_GIT_PROMPT_UNSTAGED="%{$fg_bold[red]%}●"
-ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$fg_bold[white]%}●"
-ZSH_THEME_GIT_PROMPT_UNMERGED="%{$fg_bold[red]%}✕"
-ZSH_THEME_GIT_PROMPT_SUFFIX=" $fg_bold[white]›%{$reset_color%} "
+autoload -U add-zsh-hook
+add-zsh-hook precmd  theme_precmd
